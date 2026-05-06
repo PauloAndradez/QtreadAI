@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Qtread AI</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&display=swap">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #000000;
+            --bg-sidebar: #0a0a0a;
+            --bg-input: #111111;
+            --text-primary: #ffffff;
+            --accent-blue: #4b90ff;
+            --border-color: rgba(255, 255, 255, 0.1);
+            --msg-font-size: 1.05rem;
+        }
+
+        body.light-theme {
+            --bg-dark: #ffffff;
+            --bg-sidebar: #f0f2f5;
+            --bg-input: #f0f2f5;
+            --text-primary: #1f1f1f;
+            --border-color: rgba(0, 0, 0, 0.1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Google Sans', sans-serif; transition: background 0.3s, color 0.3s; }
+        body { background-color: var(--bg-dark); color: var(--text-primary); height: 100vh; display: flex; overflow: hidden; }
+
+        .sidebar {
+            width: 68px; background-color: var(--bg-sidebar);
+            display: flex; flex-direction: column; align-items: center;
+            padding: 20px 0; border-right: 1px solid var(--border-color);
+            flex-shrink: 0; z-index: 10;
+        }
+        .side-icon {
+            width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+            border-radius: 8px; cursor: pointer; color: #c4c7c5; margin-bottom: 15px;
+        }
+        .side-icon:hover { background: rgba(128, 128, 128, 0.1); color: var(--accent-blue); }
+        .side-icon svg { width: 22px; height: 22px; fill: currentColor; }
+
+        .main-content { flex: 1; display: flex; flex-direction: column; height: 100vh; position: relative; }
+        .app-header { padding: 20px 25px; font-size: 1.5rem; font-weight: 700; color: var(--text-primary); opacity: 0.9; flex-shrink: 0; }
+
+        #chat-area {
+            flex: 1; overflow-y: auto; padding: 10px 20px 40px;
+            display: flex; flex-direction: column; gap: 35px;
+            max-width: 900px; margin: 0 auto; width: 100%;
+            scrollbar-width: none;
+        }
+
+        .home-view { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 60vh; }
+        .hero-text { font-size: 3rem; font-weight: 500; margin-bottom: 10px; background: linear-gradient(90deg, #4b90ff, #ff5546); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .studio-tag { color: #5f6368; font-size: 0.85rem; letter-spacing: 1px; }
+
+        .msg-row { display: flex; flex-direction: column; gap: 8px; width: 100%; animation: fadeIn 0.2s ease-out; }
+        .ai-text { line-height: 1.7; font-size: var(--msg-font-size); color: var(--text-primary); width: 100%; overflow-wrap: break-word; }
+        .user-bubble { background: var(--bg-input); padding: 14px 22px; border-radius: 22px; align-self: flex-end; max-width: 85%; font-size: var(--msg-font-size); border: 1px solid var(--border-color); }
+
+        .ai-actions { display: flex; gap: 10px; margin-top: 10px; opacity: 0; transition: opacity 0.3s; }
+        .ai-actions.visible { opacity: 1; }
+        .action-btn {
+            background: transparent; border: 1px solid var(--border-color); color: #8e918f;
+            padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 0.75rem; font-weight: 500;
+        }
+        .action-btn:hover { background: var(--bg-input); color: var(--accent-blue); border-color: var(--accent-blue); }
+
+        #toast {
+            position: fixed; bottom: 30px; left: 30px;
+            background: var(--accent-blue); color: white; padding: 12px 24px;
+            border-radius: 12px; font-size: 0.9rem; font-weight: 500;
+            transform: translateY(100px); opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 9999; box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        #toast.show { transform: translateY(0); opacity: 1; }
+
+        #settings-modal {
+            position: fixed; left: 80px; top: 20px; background: var(--bg-sidebar);
+            border: 1px solid var(--border-color); padding: 25px; border-radius: 20px;
+            width: 300px; display: none; flex-direction: column; gap: 18px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6); z-index: 1000;
+        }
+        .setting-item { display: flex; flex-direction: column; gap: 6px; }
+        .setting-item label { font-size: 0.8rem; color: #8e918f; text-transform: uppercase; }
+        .setting-item select { padding: 10px; border-radius: 10px; background: var(--bg-input); color: var(--text-primary); border: 1px solid var(--border-color); outline: none; }
+
+        .bottom-wrap { flex-shrink: 0; background: var(--bg-dark); padding: 10px 20px 20px; }
+        .input-box { background: var(--bg-input); border-radius: 30px; border: 1px solid var(--border-color); padding: 12px 20px; max-width: 800px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+        .input-field { flex: 1; background: transparent; border: none; color: var(--text-primary); outline: none; font-size: 1.05rem; }
+        .send-btn { background: #fff; border: none; width: 38px; height: 38px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .send-btn:disabled { background: #3c4043; opacity: 0.3; cursor: not-allowed; }
+        .disclaimer { font-size: 0.75rem; color: #8e918f; text-align: center; margin-top: 12px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body>
+
+    <div id="toast">Copiado!</div>
+
+    <div class="sidebar">
+        <div class="side-icon" onclick="toggleSettings()"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></div>
+        <div class="side-icon" onclick="clearChat()"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></div>
+    </div>
+
+    <div id="settings-modal">
+        <h3 style="margin-bottom:5px;">Configurações</h3>
+        <div class="setting-item">
+            <label>Tema de Fundo</label>
+            <select id="theme-select" onchange="updateTheme()">
+                <option value="dark">Preto</option>
+                <option value="light">Claro</option>
+            </select>
+        </div>
+        <div class="setting-item">
+            <label>Tamanho da Fonte</label>
+            <select id="font-size-select" onchange="updateFontSize()">
+                <option value="0.9rem">Pequena</option>
+                <option value="1.05rem" selected>Padrão</option>
+                <option value="1.2rem">Grande</option>
+            </select>
+        </div>
+        <div class="setting-item">
+            <label>Velocidade das Respostas</label>
+            <select id="speed-select">
+                <option value="40">Lenta</option>
+                <option value="20" selected>Equilibrada</option>
+                <option value="5">Instantânea</option>
+            </select>
+        </div>
+        <button onclick="toggleSettings()" style="width:100%; padding:12px; background:var(--accent-blue); border:none; color:white; border-radius:12px; font-weight:700; cursor:pointer; margin-top:10px;">Salvar</button>
+    </div>
+
+    <div class="main-content">
+        <div class="app-header">Qtread AI</div>
+        <div id="chat-area">
+            <div class="home-view" id="home-view">
+                <h1 class="hero-text">Como posso ajudar?</h1>
+                <p class="studio-tag">Qtread AI</p>
+            </div>
+        </div>
+
+        <div class="bottom-wrap">
+            <div class="input-box">
+                <input type="text" id="user-input" class="input-field" placeholder="Pergunte ao Qtread AI...">
+                <button class="send-btn" id="send-btn"><svg viewBox="0 0 24 24" width="20" height="20" fill="#000"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+            </div>
+            <p class="disclaimer"> Qtread AI é uma inteligência artificial e pode cometer erros.</p>
+        </div>
+    </div>
+
+    <script>
+        const API_KEY = "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";
+        const chatArea = document.getElementById('chat-area');
+        const userInput = document.getElementById('user-input');
+        const sendBtn = document.getElementById('send-btn');
+        const speedSelect = document.getElementById('speed-select');
+        const toast = document.getElementById('toast');
+
+        let chatHistory = [{
+            role: "system",
+            content: "Você é o Qtread AI, uma inteligência artificial prestativa. Não mencione seu criador ou origem espontaneamente. Apenas se o usuário perguntar especificamente 'quem é você?' ou 'quem te criou?', responda que você é o Qtread AI, criado por Paulo Andrade da ChillBolt Studios."
+        }];
+
+        let isGenerating = false;
+
+        function showToast(message) {
+            toast.innerText = message;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+
+        function copyToClipboard(text) { navigator.clipboard.writeText(text).then(() => showToast("Copiado!")); }
+
+        function downloadText(text) {
+            const blob = new Blob([text], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = 'resposta.txt'; a.click();
+        }
+
+        function toggleSettings() {
+            const m = document.getElementById('settings-modal');
+            m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+        }
+
+        function updateTheme() { document.body.classList.toggle('light-theme', document.getElementById('theme-select').value === 'light'); }
+        function updateFontSize() { document.documentElement.style.setProperty('--msg-font-size', document.getElementById('font-size-select').value); }
+
+        function clearChat() {
+            chatArea.innerHTML = `
+                <div class="home-view" id="home-view">
+                    <h1 class="hero-text">Como posso ajudar?</h1>
+                    <p class="studio-tag">Qtread AI</p>
+                </div>
+            `;
+            chatHistory = [{
+                role: "system",
+                content: "Você é o Qtread AI. Não mencione seu criador espontaneamente. Apenas se perguntarem sobre sua identidade ou origem, diga que foi criado por Paulo Andrade da ChillBolt Studios."
+            }];
+            showToast("Conversa apagada!");
+        }
+
+        async function sendMessage() {
+            const text = userInput.value.trim();
+            if (!text || isGenerating) return;
+
+            isGenerating = true;
+            userInput.disabled = true;
+            sendBtn.disabled = true;
+
+            const hv = document.getElementById('home-view');
+            if(hv) hv.style.display = 'none';
+
+            const uDiv = document.createElement('div');
+            uDiv.className = 'msg-row';
+            uDiv.innerHTML = `<div class="user-bubble">${text}</div>`;
+            chatArea.appendChild(uDiv);
+            userInput.value = "";
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            chatHistory.push({ role: "user", content: text });
+
+            try {
+                const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                    method: "POST",
+                    headers: { "Authorization": `Bearer ${API_KEY}`, "Content-Type": "application/json" },
+                    body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages: chatHistory, temperature: 0.6 })
+                });
+                const data = await response.json();
+                const aiMsg = data.choices[0].message.content;
+
+                const aiRow = document.createElement('div');
+                aiRow.className = 'msg-row';
+                aiRow.innerHTML = `
+                    <div class="ai-container">
+                        <div class="ai-text"></div>
+                        <div class="ai-actions">
+                            <button class="action-btn" onclick="copyToClipboard(\`${aiMsg.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">Copiar</button>
+                            <button class="action-btn" onclick="downloadText(\`${aiMsg.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">Baixar .txt</button>
+                        </div>
+                    </div>`;
+                chatArea.appendChild(aiRow);
+
+                const textDiv = aiRow.querySelector('.ai-text');
+                const actionsDiv = aiRow.querySelector('.ai-actions');
+                let currentIndex = 0;
+                let baseSpeed = parseInt(speedSelect.value);
+                let charStep = aiMsg.length > 500 ? 3 : 1;
+
+                function type() {
+                    if (currentIndex <= aiMsg.length) {
+                        textDiv.innerHTML = marked.parse(aiMsg.slice(0, currentIndex));
+                        chatArea.scrollTop = chatArea.scrollHeight;
+                        currentIndex += charStep;
+                        setTimeout(type, baseSpeed);
+                    } else {
+                        textDiv.innerHTML = marked.parse(aiMsg);
+                        actionsDiv.classList.add('visible');
+                        isGenerating = false;
+                        userInput.disabled = false;
+                        sendBtn.disabled = false;
+                        userInput.focus();
+                    }
+                }
+                type();
+                chatHistory.push({ role: "assistant", content: aiMsg });
+            } catch(e) {
+                isGenerating = false;
+                userInput.disabled = false;
+                sendBtn.disabled = false;
+            }
+        }
+
+        sendBtn.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') sendMessage(); });
+    </script>
+</body>
+</html>
